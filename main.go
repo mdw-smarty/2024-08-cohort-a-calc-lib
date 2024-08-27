@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,26 +13,38 @@ import (
 type Calculator interface{ Calculate(a, b int) int }
 
 func main() {
-	var (
-		inputs     []string   = os.Args[1:]
-		calculator Calculator = calc.Addition{}
-		output     io.Writer  = os.Stdout
-	)
+	handler := NewHandler(calc.Addition{}, os.Stdout)
+	err := handler.Handle(os.Args[1:])
+	if err != nil {
+		panic(err)
+	}
+}
 
-	if len(inputs) != 2 {
-		panic("usage: <a> <b>")
+type Handler struct {
+	calculator Calculator
+	output     io.Writer
+}
+
+func NewHandler(calculator Calculator, output io.Writer) *Handler {
+	return &Handler{calculator: calculator, output: output}
+}
+
+func (this *Handler) Handle(args []string) error {
+	if len(args) != 2 {
+		return errors.New("usage: calc <a> <b>")
 	}
-	a, err := strconv.Atoi(inputs[0])
+	a, err := strconv.Atoi(args[0])
 	if err != nil {
-		panic(err)
+		return err
 	}
-	b, err := strconv.Atoi(inputs[1])
+	b, err := strconv.Atoi(args[1])
 	if err != nil {
-		panic(err)
+		return err
 	}
-	c := calculator.Calculate(a, b)
-	_, err = fmt.Fprintln(output, c)
+	c := this.calculator.Calculate(a, b)
+	_, err = fmt.Fprintln(this.output, c)
 	if err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
